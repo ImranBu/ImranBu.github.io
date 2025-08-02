@@ -2,49 +2,94 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTC Ticker Pixel Font</title>
-  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <title>BTC Matrix Ticker Pro</title>
   <style>
     body {
       margin: 0;
       background-color: black;
-      color: #00FF00;
-      font-family: 'VT323', monospace;
-      font-size: 64px;
-      text-align: center;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
       overflow: hidden;
     }
-
-    #btc {
-      text-shadow: 0 0 10px #00FF00, 0 0 20px #00FF00;
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: black;
     }
   </style>
 </head>
 <body>
-  <div id="btc">Lade...</div>
+<canvas id="ticker" width="800" height="300"></canvas>
 
-  <script>
-    async function updateBTC() {
-      try {
-        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
-        const data = await res.json();
-        const price = data.bitcoin.usd.toLocaleString('en-US', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        });
+<script>
+  const canvas = document.getElementById("ticker");
+  const ctx = canvas.getContext("2d");
 
-        document.getElementById('btc').textContent = `₿ $${price}`;
-      } catch (e) {
-        document.getElementById('btc').textContent = "Fehler beim Laden";
+  async function fetchBTC() {
+    try {
+      const res = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1');
+      const chartData = await res.json();
+      const prices = chartData.prices;
+      const last = prices[prices.length - 1][1];
+      const first = prices[0][1];
+      const change = ((last - first) / first * 100).toFixed(2);
+
+      drawTicker(`BTC $${last.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`, `${change}%`, prices);
+    } catch (e) {
+      drawTicker("Fehler", "", []);
+    }
+  }
+
+  function drawTicker(priceText, changeText, chartPoints) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw price
+    drawLEDText(priceText, 50, 80, 6);
+
+    // Draw percent change
+    drawLEDText(changeText, 700, 80, 6, 'right');
+
+    // Draw simple chart line
+    if (chartPoints.length > 0) {
+      const min = Math.min(...chartPoints.map(p => p[1]));
+      const max = Math.max(...chartPoints.map(p => p[1]));
+      ctx.strokeStyle = "#00FF00";
+      ctx.beginPath();
+      for (let i = 0; i < chartPoints.length; i++) {
+        const x = 20 + i * (canvas.width - 40) / chartPoints.length;
+        const y = 200 - ((chartPoints[i][1] - min) / (max - min)) * 80;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+  }
+
+  function drawLEDText(text, x, y, size = 5, align = 'left') {
+    const font = "bold 36px Courier New";
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = 800;
+    tempCanvas.height = 100;
+    const tempCtx = tempCanvas.getContext("2d");
+    tempCtx.fillStyle = "#ffffff";
+    tempCtx.font = font;
+    tempCtx.textAlign = align;
+    tempCtx.fillText(text, align === 'left' ? 0 : 800, 60);
+
+    const imageData = tempCtx.getImageData(0, 0, 800, 100);
+    ctx.fillStyle = "#00FF00";
+    for (let py = 0; py < imageData.height; py += size + 2) {
+      for (let px = 0; px < imageData.width; px += size + 2) {
+        const i = (py * imageData.width + px) * 4;
+        if (imageData.data[i] > 50) {
+          ctx.beginPath();
+          ctx.arc(x + px, y + py, size / 2, 0, 2 * Math.PI);
+          ctx.fill();
+        }
       }
     }
+  }
 
-    updateBTC();
-    setInterval(updateBTC, 10000);
-  </script>
+  fetchBTC();
+  setInterval(fetchBTC, 60000); // alle 60 Sekunden
+</script>
 </body>
 </html>
