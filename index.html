@@ -2,71 +2,49 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BTC Dot Matrix Ticker</title>
+  <title>BTC Ticker Pixel Font</title>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
   <style>
     body {
       margin: 0;
-      background: black;
+      background-color: black;
+      color: #00FF00;
+      font-family: 'VT323', monospace;
+      font-size: 64px;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
       overflow: hidden;
     }
-    canvas {
-      display: block;
-      margin: 0 auto;
-      background: black;
+
+    #btc {
+      text-shadow: 0 0 10px #00FF00, 0 0 20px #00FF00;
     }
   </style>
 </head>
 <body>
-<canvas id="matrix" width="800" height="200"></canvas>
+  <div id="btc">Lade...</div>
 
-<script>
-  const canvas = document.getElementById("matrix");
-  const ctx = canvas.getContext("2d");
+  <script>
+    async function updateBTC() {
+      try {
+        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+        const data = await res.json();
+        const price = data.bitcoin.usd.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
 
-  const dotSize = 6;
-  const spacing = 2;
-  const font = "bold 32px Courier New";
-  ctx.font = font;
-
-  async function fetchBTC() {
-    try {
-      const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
-      const data = await res.json();
-      const price = data.bitcoin.usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      drawText(`BTC $${price}`);
-    } catch (e) {
-      drawText("Fehler");
-    }
-  }
-
-  function drawText(text) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#00FF00";
-
-    const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = canvas.width;
-    tempCanvas.height = canvas.height;
-    const tempCtx = tempCanvas.getContext("2d");
-    tempCtx.fillStyle = "#ffffff";
-    tempCtx.font = font;
-    tempCtx.fillText(text, 20, 100);
-
-    const imageData = tempCtx.getImageData(0, 0, canvas.width, canvas.height);
-    for (let y = 0; y < imageData.height; y += dotSize + spacing) {
-      for (let x = 0; x < imageData.width; x += dotSize + spacing) {
-        const index = (y * imageData.width + x) * 4;
-        const brightness = imageData.data[index];
-        if (brightness > 50) {
-          ctx.beginPath();
-          ctx.arc(x, y, dotSize / 2, 0, Math.PI * 2);
-          ctx.fill();
-        }
+        document.getElementById('btc').textContent = `₿ $${price}`;
+      } catch (e) {
+        document.getElementById('btc').textContent = "Fehler beim Laden";
       }
     }
-  }
 
-  setInterval(fetchBTC, 10000);
-  fetchBTC();
-</script>
+    updateBTC();
+    setInterval(updateBTC, 10000);
+  </script>
 </body>
 </html>
